@@ -1,5 +1,13 @@
 package org.example;
 
+import org.example.command.CalculateAverageGrade;
+import org.example.command.ClassSelectable;
+import org.example.command.ExecuteCommand;
+import org.example.command.SendMessageWithButton;
+import org.example.service.EngTgBot;
+import org.example.service.HisTgBot;
+import org.example.service.InfTgBot;
+import org.example.service.MathTgBot;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -13,9 +21,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class TgBot extends TelegramLongPollingBot {
     private final String botName;
@@ -29,11 +35,25 @@ public class TgBot extends TelegramLongPollingBot {
     private String currentTaskText;
     private boolean flagTest = false;
     private boolean flagAnwser = false;
-    private String x = "";
+    private String x = ""; //Лучше назвать переменную типа nameSchoolSubject
+    private final Map<String, ExecuteCommand> executeCommandMap = new HashMap<>();
 
     public TgBot(String botName, String botToken) {
         this.botName = botName;
         this.botToken = botToken;
+
+        //Это как вариант дробления кода на классы
+        ExecuteCommand sendMessageWithButton = new SendMessageWithButton( this);
+        ExecuteCommand classSelectable = new ClassSelectable(message, this);
+        ExecuteCommand calculateAverageGrade = new CalculateAverageGrade(message, this);
+        executeCommandMap.put(sendMessageWithButton.name(), sendMessageWithButton);
+
+        //Правда при разных ключах могут вызваться одни и те же методы
+        //этот момент при создании API интерфейса я не продумал.
+        executeCommandMap.put(classSelectable.name(), classSelectable);
+        executeCommandMap.put("Back_button", classSelectable);
+
+        executeCommandMap.put(calculateAverageGrade.name(), calculateAverageGrade);
     }
 
     @Override
@@ -48,21 +68,25 @@ public class TgBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        // Очень много ветвлений, что плохо влияет на читаемость кода.
+        // Лучше поделить функционал на отдельные классы
         if (update.hasMessage() && update.getMessage().hasText()) {
             messageText = update.getMessage().getText();
             chatId = update.getMessage().getChatId().toString();
             message.setChatId(chatId);
-            switch (messageText) {
-                case "/start":
-                    sendMessageWithButtons(chatId);
-                    break;
-                case "Начать обучение":
-                    classSelectable(chatId);
-                    break;
-                case "Успеваемость":
-                    calculateAverageGrade(chatId);
-                    break;
-            }
+            //Вместо switch case метода мы используем мапу
+            executeCommandMap.get(messageText).execute(chatId);
+//            switch (messageText) {
+//                case "/start":
+//                    sendMessageWithButtons(chatId);
+//                    break;
+//                case "Начать обучение":
+//                    classSelectable(chatId);
+//                    break;
+//                case "Успеваемость":
+//                    calculateAverageGrade(chatId);
+//                    break;
+//            }
             if (!flagTest && flagAnwser && !Objects.equals(messageText, "/stop") && !Objects.equals(messageText, "/start") && !Objects.equals(messageText, "")) {
                 System.out.println(x);
                 processAnswer(chatId, messageText, x, TopicId);
@@ -87,7 +111,6 @@ public class TgBot extends TelegramLongPollingBot {
                         break;
                     case "Eng_button_Subject":
                         EngTgBot engTgBot = new EngTgBot();
-                        engTgBot.connectToDatabase();
                         engTgBot.fetchEngTopics(classNumber, chatId, messageId);
                         x = "Английский_язык";
                         break;
@@ -115,7 +138,7 @@ public class TgBot extends TelegramLongPollingBot {
                 sendTest(chatId, messageId, TopicId);
             } else if (callBackQueryData.equals("Back_button")) {
                 System.out.println("Use Back_button");
-                classSelectable(chatId);
+                executeCommandMap.get("Back_button").execute(chatId);
             } else if (callBackQueryData.equals("Back_button2") || callBackQueryData.equals("Back_button3") || callBackQueryData.equals("Back_button4")) {
                 System.out.println("Use Back_button2");
                 fetchTopicOptions(chatId, messageId);
@@ -206,57 +229,6 @@ public class TgBot extends TelegramLongPollingBot {
 
         try {
             execute(editMessageText);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Создание кнопок выбора класса
-    public void classSelectable(String chatId) {
-        if (chatId == null) {
-            System.out.println("ChatId is null");
-            return;
-        }
-        message.setChatId(chatId);
-        message.setText("Выберите класс для изучения:");
-
-        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
-        List<InlineKeyboardButton> rowInline = new ArrayList<>();
-
-        for (int i = 1; i <= 3; i++) {
-            InlineKeyboardButton classButton = new InlineKeyboardButton();
-            classButton.setText(i + " класс");
-            classButton.setCallbackData(i + "Class_button");
-            rowInline.add(classButton);
-        }
-
-        List<InlineKeyboardButton> rowInline2 = new ArrayList<>();
-
-        for (int i = 4; i <= 6; i++) {
-            InlineKeyboardButton classButton = new InlineKeyboardButton();
-            classButton.setText(i + " класс");
-            classButton.setCallbackData(i + "Class_button");
-            rowInline2.add(classButton);
-        }
-
-        List<InlineKeyboardButton> rowInline3 = new ArrayList<>();
-
-        for (int i = 7; i <= 9; i++) {
-            InlineKeyboardButton classButton = new InlineKeyboardButton();
-            classButton.setText(i + " класс");
-            classButton.setCallbackData(i + "Class_button");
-            rowInline3.add(classButton);
-        }
-
-        rowList.add(rowInline);
-        rowList.add(rowInline2);
-        rowList.add(rowInline3);
-
-        inlineKeyboardMarkup.setKeyboard(rowList);
-        message.setReplyMarkup(inlineKeyboardMarkup);
-        try {
-            execute(message);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -760,116 +732,6 @@ public class TgBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
         flagTest = false;
-    }
-
-    private void calculateAverageGrade(String chatId) {
-        try {
-            String dbUrl = "jdbc:postgresql://localhost:5432/TgBot";
-            String dbUser = "postgres";
-            String dbPassword = "1793";
-            String tableName = "user_" + chatId;
-            String selectQuery = "SELECT Название_предмета, Название_темы FROM " + tableName;
-            Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-            Statement statement = connection.createStatement();
-            ResultSet subjectResult = statement.executeQuery(selectQuery);
-
-            int previousClassValue = -1; // Значение предыдущего класса
-            int sum = 0; // Сумма оценок
-            int count = 0; // Количество оценок
-            String tableName2 = "";
-            while (subjectResult.next()) {
-                tableName2 = subjectResult.getString("Название_предмета");
-                String taskName = subjectResult.getString("Название_темы");
-
-                String selectTaskQuery = "SELECT Класс, \"Название темы\" FROM " + tableName2;
-                Statement taskStatement = connection.createStatement();
-                ResultSet taskResult = taskStatement.executeQuery(selectTaskQuery);
-
-                while (taskResult.next()) {
-                    int classValue = Integer.parseInt(taskResult.getString("Класс"));
-                    String taskNameFromSubject = taskResult.getString("Название темы");
-
-                    if (taskName.equals(taskNameFromSubject)) {
-                        if (classValue != previousClassValue) {
-                            if (count > 0) {
-                                int average = sum / count;
-                                StringBuilder messageToSend = new StringBuilder("Успеваемость по классам:\n\n");
-                                messageToSend.append("Класс: ").append(previousClassValue).append("\n");
-                                messageToSend.append("Предмет: ").append(tableName2).append("\n");
-                                messageToSend.append("Средняя оценка: ").append(average).append("\n\n");
-                                sendMessage(chatId, String.valueOf(messageToSend));
-                            }
-
-                            previousClassValue = classValue;
-                            sum = 0;
-                            count = 0;
-                        }
-
-                        String selectAverageGradeQuery = "SELECT Оценка_задачи, Оценка_тест FROM " + tableName;
-                        Statement gradeStatement = connection.createStatement();
-                        ResultSet gradeResult = gradeStatement.executeQuery(selectAverageGradeQuery);
-
-                        while (gradeResult.next()) {
-                            int task = gradeResult.getInt("Оценка_задачи");
-                            int test = gradeResult.getInt("Оценка_тест");
-                            sum += (task + test);
-                            count++;
-                        }
-
-                        gradeResult.close();
-                        gradeStatement.close();
-                    }
-                }
-
-                taskResult.close();
-                taskStatement.close();
-            }
-
-            if (count > 0) {
-                int average = sum / count;
-                StringBuilder messageToSend = new StringBuilder("Успеваемость по классам:\n\n");
-                messageToSend.append("Класс: ").append(previousClassValue).append("\n");
-                messageToSend.append("Предмет: ").append(tableName2).append("\n");
-                messageToSend.append("Средняя оценка: ").append(average).append("\n\n");
-                sendMessage(chatId, String.valueOf(messageToSend));
-            }
-
-            subjectResult.close();
-            statement.close();
-            connection.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    public void sendMessageWithButtons(String chatId) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.enableMarkdown(true);
-        sendMessage.setChatId(chatId);
-        sendMessage.setText("Выберите");
-
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setResizeKeyboard(false);
-        keyboardMarkup.setOneTimeKeyboard(false);
-
-        List<KeyboardRow> keyboard = new ArrayList<>();
-
-        KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("Начать обучение"));
-        row1.add(new KeyboardButton("Успеваемость"));
-
-        keyboard.add(row1);
-
-        keyboardMarkup.setKeyboard(keyboard);
-        sendMessage.setReplyMarkup(keyboardMarkup);
-
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-
     }
 
 }
