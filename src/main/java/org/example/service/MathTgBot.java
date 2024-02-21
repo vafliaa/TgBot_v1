@@ -1,6 +1,6 @@
-package org.example;
+package org.example.service;
 
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.example.TgBot;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -9,12 +9,16 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HisTgBot {
+public class MathTgBot{
     private Connection connection;
     private String dbUrl = "jdbc:postgresql://localhost:5432/TgBot";
     private String dbUser = "postgres";
     private String dbPassword = "1793";
+    private int topicId;
 
+    public int getTopicId() {
+        return topicId;
+    }
     public void connectToDatabase() {
         try {
             connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
@@ -25,10 +29,10 @@ public class HisTgBot {
         }
     }
 
-    public void fetchHisTopics(int classNumber, String chatId, long messageId) {
+    public void fetchMathTopics(int classNumber, String chatId, long messageId) {
         try {
             Statement statement = connection.createStatement();
-            String query = "SELECT \"id\", \"Название темы\", \"Класс\" FROM \"История\"";
+            String query = "SELECT \"id\", \"Название темы\", \"Класс\" FROM \"Математика\"";
             ResultSet resultSet = statement.executeQuery(query);
 
             EditMessageText editMessageText = new EditMessageText();
@@ -40,7 +44,7 @@ public class HisTgBot {
             List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
 
             while (resultSet.next()) {
-                int idTopic = resultSet.getInt("id");
+                topicId = resultSet.getInt("id");
                 int grade = resultSet.getInt("Класс");
                 if (grade == classNumber) {
                     String topic = resultSet.getString("Название темы");
@@ -48,7 +52,7 @@ public class HisTgBot {
                     List<InlineKeyboardButton> rowInline = new ArrayList<>();
                     InlineKeyboardButton topicButton = new InlineKeyboardButton();
                     topicButton.setText(topic);
-                    topicButton.setCallbackData("Topic_button_" + idTopic);
+                    topicButton.setCallbackData("Topic_button_" + topicId);
                     rowInline.add(topicButton);
 
                     rowList.add(rowInline);
@@ -73,5 +77,4 @@ public class HisTgBot {
             System.out.println("Failed to execute API method: " + e.getMessage());
         }
     }
-
 }

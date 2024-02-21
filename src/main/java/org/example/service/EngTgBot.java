@@ -1,39 +1,21 @@
-package org.example;
+package org.example.service;
 
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.example.bl.DatabaseUtils;
+import org.example.TgBot;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MathTgBot{
-    private Connection connection;
-    private String dbUrl = "jdbc:postgresql://localhost:5432/TgBot";
-    private String dbUser = "postgres";
-    private String dbPassword = "1793";
-    private int topicId;
+public class EngTgBot {
 
-    public int getTopicId() {
-        return topicId;
-    }
-    public void connectToDatabase() {
+    public void fetchEngTopics(int classNumber, String chatId, long messageId) {
         try {
-            connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-            System.out.println("Connected to the database!");
-        } catch (SQLException e) {
-            System.out.println("Failed to connect to the database.");
-            e.printStackTrace();
-        }
-    }
-
-    public void fetchMathTopics(int classNumber, String chatId, long messageId) {
-        try {
-            Statement statement = connection.createStatement();
-            String query = "SELECT \"id\", \"Название темы\", \"Класс\" FROM \"Математика\"";
+            Statement statement = DatabaseUtils.getConnection().createStatement();
+            String query = "SELECT \"id\", \"Название темы\", \"Класс\" FROM \"Английский_язык\"";
             ResultSet resultSet = statement.executeQuery(query);
 
             EditMessageText editMessageText = new EditMessageText();
@@ -45,7 +27,7 @@ public class MathTgBot{
             List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
 
             while (resultSet.next()) {
-                topicId = resultSet.getInt("id");
+                int idTopic = resultSet.getInt("id");
                 int grade = resultSet.getInt("Класс");
                 if (grade == classNumber) {
                     String topic = resultSet.getString("Название темы");
@@ -53,7 +35,7 @@ public class MathTgBot{
                     List<InlineKeyboardButton> rowInline = new ArrayList<>();
                     InlineKeyboardButton topicButton = new InlineKeyboardButton();
                     topicButton.setText(topic);
-                    topicButton.setCallbackData("Topic_button_" + topicId);
+                    topicButton.setCallbackData("Topic_button_" + idTopic);
                     rowInline.add(topicButton);
 
                     rowList.add(rowInline);
@@ -78,4 +60,5 @@ public class MathTgBot{
             System.out.println("Failed to execute API method: " + e.getMessage());
         }
     }
+
 }

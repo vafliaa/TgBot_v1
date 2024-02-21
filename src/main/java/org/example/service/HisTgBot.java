@@ -1,6 +1,6 @@
-package org.example;
+package org.example.service;
 
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.example.TgBot;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -9,7 +9,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InfTgBot {
+public class HisTgBot {
     private Connection connection;
     private String dbUrl = "jdbc:postgresql://localhost:5432/TgBot";
     private String dbUser = "postgres";
@@ -25,10 +25,10 @@ public class InfTgBot {
         }
     }
 
-    public void fetchInfTopics(int classNumber, String chatId, long messageId) {
+    public void fetchHisTopics(int classNumber, String chatId, long messageId) {
         try {
             Statement statement = connection.createStatement();
-            String query = "SELECT \"id\", \"Название темы\", \"Класс\" FROM \"Информатика\"";
+            String query = "SELECT \"id\", \"Название темы\", \"Класс\" FROM \"История\"";
             ResultSet resultSet = statement.executeQuery(query);
 
             EditMessageText editMessageText = new EditMessageText();
